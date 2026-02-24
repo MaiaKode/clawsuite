@@ -1,0 +1,144 @@
+Informe de Auditoría de Seguridad: ClawSuite
+Fecha:
+ 24 de febrero de 2026
+
+Auditor:
+ Manus AI
+Resumen Ejecutivo
+Se ha realizado una auditoría de seguridad sobre el código fuente de ClawSuite, una interfaz de usuario web para la gestión de OpenClaw. El análisis ha revelado varias vulnerabilidades críticas que podrían permitir a un atacante tomar control total del servidor donde se ejecuta OpenClaw. La vulnerabilidad más grave es la 
+ausencia de autenticación en la mayoría de los 
+endpoints
+ de la API
+, incluyendo aquellos que permiten la ejecución de comandos en el sistema, la manipulación de archivos y la modificación de la configuración.
+Se desaconseja firmemente la instalación y exposición de ClawSuite en un entorno de producción hasta que estas vulnerabilidades sean corregidas.
+Vulnerabilidades Identificadas
+A continuación se detallan las vulnerabilidades encontradas, clasificadas por su nivel de riesgo.
+1. (Crítico) Ausencia de Autenticación en Endpoints Sensibles
+La mayoría de las rutas de la API de ClawSuite carecen de un mecanismo de autenticación y autorización. Esto significa que cualquier persona con acceso a la red donde se expone ClawSuite puede invocar estas APIs sin necesidad de credenciales.
+Endpoints Afectados:
+Se identificaron más de 30 endpoints sin el middleware 
+isAuthenticated
+. Los más peligrosos son:
+Endpoint
+Ruta de Archivo
+Riesgo Potencial
+files
+src/routes/api/files.ts
+Escritura, lectura y eliminación arbitraria de archivos en el 
+workspace
+.
+terminal-input
+src/routes/api/terminal-input.ts
+Envío de comandos a una sesión de terminal abierta.
+openclaw-update
+src/routes/api/openclaw-update.ts
+Ejecución de comandos del sistema (
+execSync
+) para actualizar OpenClaw.
+skills
+src/routes/api/skills.ts
+Instalación y gestión de 
+skills
+, lo que implica ejecución de 
+npm
+ y 
+git
+.
+gateway-config
+src/routes/api/gateway-config.ts
+Modificación de la configuración del gateway de OpenClaw.
+Impacto:
+Un atacante podría explotar estos endpoints para:
+Ejecutar código remotamente (RCE):
+ A través de los endpoints 
+openclaw-update
+ y 
+skills
+.
+Manipular el sistema de archivos:
+ Leer, escribir y borrar archivos en el directorio de trabajo de OpenClaw.
+Tomar control de los bots:
+ Reconfigurar el gateway para apuntar a un servidor malicioso.
+Recomendación:
+Aplicar el middleware 
+isAuthenticated
+ a 
+todas
+ las rutas de la API que realicen acciones sensibles o expongan información de configuración. Las únicas rutas que podrían permanecer públicas son las de login (
+/api/auth
+) y, potencialmente, una ruta de estado (
+/api/ping
+).
+2. (Alto) Potencial Inyección de Comandos
+El uso de 
+execSync
+ en varios archivos, especialmente en 
+openclaw-update.ts
+ y 
+skills.ts
+, es una práctica de alto riesgo que puede llevar a vulnerabilidades de inyección de comandos si no se sanitiza adecuadamente la entrada del usuario.
+Código de Riesgo (ejemplo en 
+openclaw-update.ts
+):
+const
+ { 
+execSync
+ } 
+=
+ 
+await
+ 
+import
+(
+'node:child_process'
+)
+currentVersion 
+=
+ 
+execSync
+(
+'openclaw --version'
+, {
+  encoding: 
+'utf8'
+,
+  timeout: 
+5_000
+,
+  stdio: 
+'pipe'
+,
+})
+Aunque en algunos casos los comandos parecen estáticos, la complejidad del código en 
+skills.ts
+ (que no se pudo auditar por completo) y la posibilidad de que futuras modificaciones introduzcan variables en estos comandos hacen que 
+execSync
+ sea un riesgo inaceptable en combinación con la falta de autenticación.
+Recomendación:
+Reemplazar el uso de 
+execSync
+ con alternativas más seguras como 
+spawn
+ o 
+execFile
+ del módulo 
+child_process
+, que permiten pasar argumentos de forma segura sin interpretación de la shell.
+Validar y sanitizar rigurosamente cualquier dato que pueda ser utilizado para construir un comando del sistema.
+3. (Bajo) Falta de Protección CSRF en APIs
+Si bien la cookie de sesión se establece con 
+SameSite=Strict
+, lo que ofrece una buena protección contra ataques de Cross-Site Request Forgery (CSRF) en navegadores modernos, las APIs no implementan un mecanismo de token anti-CSRF. Si la cookie se enviara en contextos entre sitios por alguna mala configuración o comportamiento del navegador, las APIs estarían desprotegidas.
+Recomendación:
+Implementar un patrón de token anti-CSRF (como el patrón de doble envío de cookies) para todas las solicitudes de tipo 
+POST
+, 
+PUT
+, 
+PATCH
+ y 
+DELETE
+ a la API, como una capa de defensa en profundidad.
+Conclusión General
+ClawSuite, en su estado actual, presenta un riesgo de seguridad inaceptable y no debe ser desplegado en un entorno accesible desde internet. La ausencia de controles de autenticación en endpoints críticos es una vulnerabilidad que expone el servidor subyacente a un compromiso total.
+Se recomienda al usuario no proceder con la instalación. En su lugar, se debe contactar al desarrollador de ClawSuite para informarle de estas vulnerabilidades y esperar a que se publique una versión segura.
