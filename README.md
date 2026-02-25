@@ -487,4 +487,5 @@ Most macOS and Linux systems include Python 3 by default. On minimal installatio
 
 ---
 
-**Built with 🦞 by [Eric](https://github.com/outsourc-e)**
+**Built with 🦞 by [Eric](https://github.com/outsourc-e)**  
+**Hardened & Audited with 🛡️ by [Jon](https://www.linkedin.com/in/jonathan-flores-pt) ([Vanguard Crux](https://www.vanguardcrux.com))**

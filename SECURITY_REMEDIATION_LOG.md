@@ -1,5 +1,7 @@
 # Security Remediation Log / Registro de Remediación de Seguridad
 
+**Lead Security Auditor & Hardener:** [Jon](https://www.linkedin.com/in/jonathan-flores-pt) — [Vanguard Crux](https://www.vanguardcrux.com)
+
 ## Audit & Hardening Summary / Resumen de Auditoría y Saneamiento
 
 This document summarizes the security improvements applied to ClawSuite to ensure a production-ready environment.
